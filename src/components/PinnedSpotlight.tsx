@@ -1,15 +1,23 @@
 "use client";
 
 import React from "react";
-import { LiveComment } from "@/types/database";
-import { Pin, Sparkles, Heart } from "lucide-react";
+import { LiveComment, AppLanguage } from "@/types/database";
+import { Pin, Heart } from "lucide-react";
 import confetti from "canvas-confetti";
+import { ThemeConfig, THEMES } from "@/lib/themes";
+import { translations } from "@/lib/i18n";
 
 interface PinnedSpotlightProps {
   pinnedComment: LiveComment;
+  themeConfig?: ThemeConfig;
+  language?: AppLanguage;
 }
 
-export default function PinnedSpotlight({ pinnedComment }: PinnedSpotlightProps) {
+export default function PinnedSpotlight({
+  pinnedComment,
+  themeConfig = THEMES["military-trucks"],
+  language = "both",
+}: PinnedSpotlightProps) {
   const triggerConfetti = () => {
     confetti({
       particleCount: 50,
@@ -19,28 +27,33 @@ export default function PinnedSpotlight({ pinnedComment }: PinnedSpotlightProps)
   };
 
   return (
-    <div className="relative group mb-6 overflow-hidden rounded-3xl p-[2px] bg-gradient-to-r from-amber-400 via-pink-500 to-purple-600 shadow-2xl animate-fade-in-up">
-      <div className="relative bg-slate-950/95 backdrop-blur-2xl rounded-[22px] p-6 sm:p-8">
-        {/* Glow corner */}
-        <div className="absolute top-0 right-0 w-48 h-48 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-
+    <div className="relative group mb-4 overflow-hidden rounded-3xl p-[2px] bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-600 shadow-xl animate-fade-in-up">
+      <div
+        className={`relative rounded-[22px] p-5 sm:p-6 ${
+          themeConfig.isLight
+            ? "bg-white/95 backdrop-blur-xl text-emerald-950"
+            : "bg-slate-950/95 backdrop-blur-2xl text-white"
+        }`}
+      >
         {/* Header Badge */}
-        <div className="flex items-center justify-between gap-3 mb-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-400 text-slate-950 shadow-md">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-amber-400 text-slate-950 shadow">
               <Pin className="w-3.5 h-3.5 fill-current" />
-              Pinned Spotlight
-            </span>
-            <span className="text-xs text-amber-300/80 font-medium flex items-center gap-1">
-              <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-spin" />
-              Host Highlight
+              <span>
+                {language === "bn"
+                  ? translations.bn.featuredComment
+                  : language === "en"
+                  ? translations.en.featuredComment
+                  : "নির্বাচিত মন্তব্য • Featured"}
+              </span>
             </span>
           </div>
 
           <button
             onClick={triggerConfetti}
-            className="p-1.5 rounded-full hover:bg-white/10 text-amber-300 transition-colors"
-            title="Celebrate!"
+            className="p-1 rounded-full hover:bg-black/5 transition-colors text-base"
+            title="Celebrate"
           >
             🎉
           </button>
@@ -48,25 +61,37 @@ export default function PinnedSpotlight({ pinnedComment }: PinnedSpotlightProps)
 
         {/* Content */}
         <div className="space-y-3">
-          <p className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white leading-snug break-words">
-            "{pinnedComment.content}"
+          <p
+            className={`text-lg sm:text-xl md:text-2xl font-extrabold leading-snug break-words ${
+              themeConfig.isLight ? "text-emerald-950" : "text-white"
+            }`}
+          >
+            &ldquo;{pinnedComment.content}&rdquo;
           </p>
 
-          <div className="flex items-center justify-between pt-2 border-t border-white/10">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-pink-500 flex items-center justify-center font-bold text-black text-sm">
+          <div
+            className={`flex items-center justify-between pt-2.5 border-t ${
+              themeConfig.isLight ? "border-emerald-900/10" : "border-white/10"
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-700 to-amber-600 flex items-center justify-center font-bold text-white text-sm">
                 {pinnedComment.author_avatar && pinnedComment.author_avatar !== "💬"
                   ? pinnedComment.author_avatar
                   : pinnedComment.author_name.charAt(0).toUpperCase()}
               </div>
-              <span className="font-bold text-amber-200 text-base sm:text-lg">
+              <span
+                className={`font-bold text-sm sm:text-base ${
+                  themeConfig.isLight ? "text-emerald-900" : "text-amber-300"
+                }`}
+              >
                 {pinnedComment.author_name}
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-rose-300 font-semibold bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/30">
-              <Heart className="w-3.5 h-3.5 fill-rose-400 text-rose-400" />
-              <span>{pinnedComment.likes_count} likes</span>
+            <div className="flex items-center gap-1 text-xs font-bold bg-rose-500/10 text-rose-600 px-2.5 py-1 rounded-full border border-rose-500/20">
+              <Heart className="w-3 h-3 fill-rose-500 text-rose-500" />
+              <span>{pinnedComment.likes_count}</span>
             </div>
           </div>
         </div>

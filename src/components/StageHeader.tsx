@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import { Maximize, Minimize, Volume2, VolumeX, Shield, Smartphone, Megaphone } from "lucide-react";
+import { Maximize, Minimize, Volume2, VolumeX, Megaphone } from "lucide-react";
+import { ThemeConfig, THEMES } from "@/lib/themes";
+import { AppLanguage } from "@/types/database";
+import { translations } from "@/lib/i18n";
 
 interface StageHeaderProps {
   title: string;
@@ -11,6 +13,8 @@ interface StageHeaderProps {
   announcement?: string;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  themeConfig?: ThemeConfig;
+  language?: AppLanguage;
 }
 
 export default function StageHeader({
@@ -20,6 +24,8 @@ export default function StageHeader({
   announcement,
   soundEnabled,
   onToggleSound,
+  themeConfig = THEMES["military-trucks"],
+  language = "both",
 }: StageHeaderProps) {
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
 
@@ -44,100 +50,81 @@ export default function StageHeader({
   };
 
   return (
-    <header className="w-full mb-6">
+    <header className="w-full mb-5 relative z-10">
+      {/* Subtle Floating Corner Stage Controls (Sound & Fullscreen only — no admin link) */}
+      <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 opacity-30 hover:opacity-100 transition-opacity duration-300">
+        <button
+          onClick={onToggleSound}
+          className="p-2.5 rounded-full bg-slate-900/80 text-white hover:bg-slate-800 border border-white/20 shadow-lg backdrop-blur-md transition-all"
+          title={soundEnabled ? "Mute Notification Chime" : "Enable Notification Chime"}
+        >
+          {soundEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+        </button>
+
+        <button
+          onClick={toggleFullscreen}
+          className="p-2.5 rounded-full bg-slate-900/80 text-white hover:bg-slate-800 border border-white/20 shadow-lg backdrop-blur-md transition-all"
+          title={isFullscreen ? "Exit Fullscreen" : "Fullscreen Mode"}
+        >
+          {isFullscreen ? <Minimize className="w-4 h-4" /> : <Maximize className="w-4 h-4" />}
+        </button>
+      </div>
+
       {/* Broadcast Announcement Banner if set by superadmin */}
       {announcement && announcement.trim() && (
-        <div className="mb-4 w-full bg-gradient-to-r from-purple-600 via-pink-600 to-amber-500 p-[1px] rounded-2xl shadow-xl animate-fade-in-up">
-          <div className="bg-slate-950/90 backdrop-blur-xl rounded-[15px] px-5 py-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-purple-500/20 text-purple-300">
-                <Megaphone className="w-5 h-5 animate-bounce" />
-              </span>
-              <div>
-                <span className="text-xs uppercase tracking-wider font-extrabold text-amber-400 mr-2">
-                  Live Announcement:
-                </span>
-                <span className="text-sm sm:text-base font-semibold text-white">
-                  {announcement}
-                </span>
-              </div>
-            </div>
+        <div className="max-w-5xl mx-auto mb-4 bg-gradient-to-r from-emerald-800 via-amber-500 to-emerald-800 p-[2px] rounded-2xl shadow-lg animate-fade-in-up">
+          <div className="bg-white/95 text-emerald-950 backdrop-blur-xl rounded-[14px] px-5 py-2.5 flex items-center justify-center gap-3 text-center">
+            <span className="p-1.5 rounded-xl bg-amber-500/20 text-amber-700 shrink-0">
+              <Megaphone className="w-4 h-4 animate-bounce" />
+            </span>
+            <span className="text-sm sm:text-base font-bold">
+              {announcement}
+            </span>
           </div>
         </div>
       )}
 
-      {/* Main Bar */}
-      <div className="glass-panel rounded-3xl p-4 sm:p-6 flex flex-col md:flex-row items-center justify-between gap-4">
-        {/* Title and live status */}
-        <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-3 sm:gap-4">
-          <div className="flex items-center gap-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/30">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-              </span>
-              Live Stage
-            </div>
-            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
-              {commentCount} {commentCount === 1 ? "Comment" : "Comments"}
+      {/* Clean Presentation Header Bar (Centered with corner clearance for leaf graphics) */}
+      <div
+        className={`max-w-4xl mx-auto rounded-3xl px-6 py-4 sm:px-8 sm:py-5 flex flex-col items-center justify-center text-center relative ${themeConfig.headerCardClass}`}
+      >
+        <div className="flex items-center gap-2.5 mb-1.5">
+          <div className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-xs font-extrabold uppercase tracking-wider bg-red-500/15 text-red-600 border border-red-500/30">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600"></span>
+            </span>
+            <span>
+              {language === "bn"
+                ? translations.bn.liveBadge
+                : language === "en"
+                ? translations.en.liveBadge
+                : "লাইভ • LIVE"}
             </span>
           </div>
 
-          <div>
-            <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-              {title || "Live Audience Comments"}
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-300/80 mt-0.5">
-              {subtitle || "Scan the QR code to post live comments directly to this screen"}
-            </p>
-          </div>
+          <span
+            className={`text-xs font-bold px-3 py-0.5 rounded-full border ${themeConfig.accentBadgeClass}`}
+          >
+            {language === "bn"
+              ? translations.bn.commentsCount(commentCount)
+              : translations.en.commentsCount(commentCount)}
+          </span>
         </div>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          {/* Sound Toggle */}
-          <button
-            onClick={onToggleSound}
-            className={`p-2.5 rounded-2xl border transition-all ${
-              soundEnabled
-                ? "bg-indigo-600/20 text-indigo-300 border-indigo-500/40 hover:bg-indigo-600/30"
-                : "bg-slate-800/80 text-slate-400 border-slate-700 hover:text-white"
-            }`}
-            title={soundEnabled ? "Sound enabled (chime on new comment)" : "Sound muted"}
-          >
-            {soundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-          </button>
+        <h1
+          className={`text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black tracking-tight leading-tight ${themeConfig.titleTextClass}`}
+        >
+          {title || "Live Audience Comments"}
+        </h1>
 
-          {/* Fullscreen Toggle */}
-          <button
-            onClick={toggleFullscreen}
-            className="p-2.5 rounded-2xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700 transition-all"
-            title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen Stage View"}
+        {subtitle && (
+          <p
+            className={`text-xs sm:text-sm md:text-base font-medium mt-1 max-w-2xl ${themeConfig.subtitleTextClass}`}
           >
-            {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
-          </button>
-
-          {/* Open Mobile View */}
-          <Link
-            href="/audience"
-            target="_blank"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-indigo-600/20 hover:bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 text-xs font-semibold transition-all"
-            title="Open Audience Submission Page"
-          >
-            <Smartphone className="w-4 h-4" />
-            <span className="hidden sm:inline">Audience Form</span>
-          </Link>
-
-          {/* Superadmin Link */}
-          <Link
-            href="/admin"
-            className="flex items-center gap-1.5 px-3.5 py-2.5 rounded-2xl bg-purple-600/20 hover:bg-purple-600/30 text-purple-300 border border-purple-500/40 text-xs font-semibold transition-all"
-            title="Open Superadmin Control Panel"
-          >
-            <Shield className="w-4 h-4" />
-            <span className="hidden sm:inline">Admin Panel</span>
-          </Link>
-        </div>
+            {subtitle}
+          </p>
+        )}
       </div>
     </header>
   );

@@ -3,11 +3,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { LiveComment, LiveSystemSettings } from "@/types/database";
+import { getThemeConfig } from "@/lib/themes";
+import { translations } from "@/lib/i18n";
 import QRCodeCard from "@/components/QRCodeCard";
 import LiveCommentCard from "@/components/LiveCommentCard";
 import PinnedSpotlight from "@/components/PinnedSpotlight";
 import StageHeader from "@/components/StageHeader";
-import { MessageSquare, Sparkles, AlertCircle } from "lucide-react";
+import { MessageSquare, Lock, Sparkles } from "lucide-react";
 import confetti from "canvas-confetti";
 
 export default function StageLiveScreen() {
@@ -15,20 +17,30 @@ export default function StageLiveScreen() {
   const [settings, setSettings] = useState<LiveSystemSettings>({
     id: "current",
     event_title: "Live Audience Comments",
-    event_subtitle: "Scan the QR code on your mobile phone to share your thoughts!",
+    event_subtitle: "Scan the QR code to join the live conversation!",
     qr_url: "",
     auto_approve: true,
     allow_comments: true,
     announcement_banner: "",
-    theme: "stage-dark",
+    theme: "military-trucks",
     banned_words: [],
+    language: "both",
+    is_published: true,
+    qr_fg_color: "#14532d",
+    qr_bg_color: "#ffffff",
+    qr_frame_style: "military-badge",
+    qr_size: "large",
+    qr_position: "left",
+    qr_label_en: "Scan QR to Comment",
+    qr_label_bn: "মন্তব্য করতে QR কোডটি স্ক্যান করুন",
+    qr_logo_emoji: "",
+    custom_bg_url: "",
     updated_at: new Date().toISOString(),
   });
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(true);
   const audioContextRef = useRef<AudioContext | null>(null);
 
-  // Play subtle chime on new comment using Web Audio API
   const playChime = () => {
     if (!soundEnabled) return;
     try {
@@ -45,8 +57,8 @@ export default function StageLiveScreen() {
       const gain = ctx.createGain();
 
       osc.type = "sine";
-      osc.frequency.setValueAtTime(587.33, now); // D5
-      osc.frequency.exponentialRampToValueAtTime(880, now + 0.15); // A5
+      osc.frequency.setValueAtTime(587.33, now);
+      osc.frequency.exponentialRampToValueAtTime(880, now + 0.15);
 
       gain.gain.setValueAtTime(0.12, now);
       gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
@@ -57,7 +69,7 @@ export default function StageLiveScreen() {
       osc.start(now);
       osc.stop(now + 0.35);
     } catch (e) {
-      console.warn("Audio chime failed to play:", e);
+      // Ignore audio autoplay restriction
     }
   };
 
@@ -67,7 +79,6 @@ export default function StageLiveScreen() {
       try {
         setLoading(true);
 
-        // Fetch settings
         const { data: settingsData } = await supabase
           .from("live_system_settings")
           .select("*")
@@ -75,10 +86,9 @@ export default function StageLiveScreen() {
           .single();
 
         if (settingsData) {
-          setSettings(settingsData as LiveSystemSettings);
+          setSettings((prev) => ({ ...prev, ...(settingsData as LiveSystemSettings) }));
         }
 
-        // Fetch approved comments
         const { data: commentsData } = await supabase
           .from("live_comments")
           .select("*")
@@ -101,7 +111,6 @@ export default function StageLiveScreen() {
 
   // Supabase Realtime Subscriptions
   useEffect(() => {
-    // 1. Comments channel
     const commentsChannel = supabase
       .channel("stage-live-comments")
       .on(
@@ -121,7 +130,6 @@ export default function StageLiveScreen() {
         (payload) => {
           const updated = payload.new as LiveComment;
 
-          // If was just pinned, trigger celebratory confetti
           if (updated.is_pinned && updated.status === "approved") {
             confetti({
               particleCount: 70,
@@ -132,7 +140,6 @@ export default function StageLiveScreen() {
           }
 
           if (updated.status !== "approved") {
-            // Remove if rejected or deleted
             setComments((prev) => prev.filter((c) => c.id !== updated.id));
           } else {
             setComments((prev) => {
@@ -158,7 +165,6 @@ export default function StageLiveScreen() {
       )
       .subscribe();
 
-    // 2. Settings channel
     const settingsChannel = supabase
       .channel("stage-live-settings")
       .on(
@@ -166,7 +172,7 @@ export default function StageLiveScreen() {
         { event: "UPDATE", schema: "public", table: "live_system_settings" },
         (payload) => {
           const updated = payload.new as LiveSystemSettings;
-          setSettings(updated);
+          setSettings((prev) => ({ ...prev, ...updated }));
         }
       )
       .subscribe();
@@ -177,103 +183,190 @@ export default function StageLiveScreen() {
     };
   }, [soundEnabled]);
 
-  // Separate pinned comment from the rest of the stream
+  const themeConfig = getThemeConfig(settings.theme);
+  const bgImageUrl =
+    settings.theme === "custom-image" && settings.custom_bg_url
+      ? settings.custom_bg_url
+      : themeConfig.bgImage;
+
   const pinnedComment = comments.find((c) => c.is_pinned);
   const streamComments = comments.filter((c) => !c.is_pinned);
+  const lang = settings.language || "both";
 
   return (
-    <main className="min-h-screen p-4 sm:p-6 lg:p-8 max-w-[1920px] mx-auto flex flex-col justify-between">
-      {/* Top Header */}
-      <StageHeader
-        title={settings.event_title}
-        subtitle={settings.event_subtitle}
-        commentCount={comments.length}
-        announcement={settings.announcement_banner}
-        soundEnabled={soundEnabled}
-        onToggleSound={() => setSoundEnabled((prev) => !prev)}
-      />
+    <div
+      className={`min-h-screen w-full relative overflow-x-hidden transition-colors duration-500 ${themeConfig.pageBgClass}`}
+    >
+      {/* Background Artwork Layer for Picture Themes */}
+      {bgImageUrl && (
+        <div
+          className="fixed inset-0 z-0 pointer-events-none bg-cover bg-center bg-no-repeat"
+          style={{
+            backgroundImage: `url('${bgImageUrl}')`,
+          }}
+        />
+      )}
 
-      {/* Main Grid: QR Code on Left, Live Comments on Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 flex-1 items-start">
-        {/* LEFT COLUMN: Large QR Code Card & Live Stats */}
-        <div className="lg:col-span-5 xl:col-span-4 sticky top-6 space-y-6">
-          <QRCodeCard customUrl={settings.qr_url} />
+      {/* Main Content Wrapper (padded to keep top leaves & bottom trucks/soldiers visible) */}
+      <main
+        className={`relative z-10 min-h-screen max-w-[1760px] mx-auto px-4 sm:px-8 lg:px-14 flex flex-col ${
+          themeConfig.scenicPadding ? "pt-6 pb-28 sm:pb-36" : "py-6 sm:py-8"
+        }`}
+      >
+        {/* Top Clean Header */}
+        <StageHeader
+          title={settings.event_title}
+          subtitle={settings.event_subtitle}
+          commentCount={comments.length}
+          announcement={settings.announcement_banner}
+          soundEnabled={soundEnabled}
+          onToggleSound={() => setSoundEnabled((prev) => !prev)}
+          themeConfig={themeConfig}
+          language={lang}
+        />
 
-          {/* Comment Status Notice */}
-          {!settings.allow_comments && (
-            <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs sm:text-sm flex items-center gap-3">
-              <AlertCircle className="w-5 h-5 shrink-0" />
-              <span>Comment submissions are currently paused by the organizer.</span>
-            </div>
-          )}
-
-          {/* Quick tips card for the stage */}
-          <div className="glass-panel rounded-2xl p-4 text-xs text-slate-400 space-y-1.5 hidden md:block">
-            <div className="flex items-center gap-1.5 font-semibold text-slate-200 uppercase tracking-wider text-[11px]">
-              <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-              Audience Screen Tips
-            </div>
-            <p>• Comments update in real time without refreshing.</p>
-            <p>• Press <kbd className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-200">F11</kbd> or click the maximize icon to enter fullscreen.</p>
-            <p>• The host can spotlight and moderate comments from the Admin Panel.</p>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Live Comment Feed */}
-        <div className="lg:col-span-7 xl:col-span-8 flex flex-col space-y-4">
-          {/* Pinned Spotlight at the top if present */}
-          {pinnedComment && <PinnedSpotlight pinnedComment={pinnedComment} />}
-
-          {/* Stream Header */}
-          <div className="flex items-center justify-between pb-2 border-b border-white/10">
-            <div className="flex items-center gap-2 text-sm sm:text-base font-bold text-white uppercase tracking-wider">
-              <MessageSquare className="w-4 h-4 text-indigo-400" />
-              <span>Audience Live Stream</span>
-            </div>
-            <span className="text-xs text-slate-400">
-              Showing {streamComments.length} {streamComments.length === 1 ? "post" : "posts"}
-            </span>
-          </div>
-
-          {/* Comments List */}
-          {loading ? (
-            <div className="space-y-4 py-8">
-              {[1, 2, 3].map((n) => (
-                <div
-                  key={n}
-                  className="glass-panel rounded-2xl p-6 h-28 animate-pulse bg-slate-800/40"
+        {/* Check if Published to Big Screen or in Standby Mode */}
+        {!settings.is_published ? (
+          <div className="flex-1 flex items-center justify-center my-8">
+            <div
+              className={`max-w-xl w-full rounded-3xl p-10 text-center space-y-4 ${themeConfig.headerCardClass}`}
+            >
+              <div className="w-16 h-16 rounded-2xl bg-emerald-800/15 border border-emerald-700/30 flex items-center justify-center mx-auto">
+                <Sparkles
+                  className={`w-8 h-8 ${
+                    themeConfig.isLight ? "text-emerald-800" : "text-amber-400"
+                  } animate-pulse`}
                 />
-              ))}
-            </div>
-          ) : streamComments.length === 0 && !pinnedComment ? (
-            <div className="glass-panel rounded-3xl p-12 text-center flex flex-col items-center justify-center space-y-4 my-8">
-              <div className="w-16 h-16 rounded-3xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-3xl">
-                👋
               </div>
-              <h3 className="text-xl sm:text-2xl font-bold text-white">Be the First to Post!</h3>
-              <p className="text-sm sm:text-base text-slate-300 max-w-md">
-                Scan the QR code on the left with your phone camera, type your name and message, and see it appear here in real time!
+              <h2 className={`text-2xl sm:text-3xl font-black ${themeConfig.titleTextClass}`}>
+                {lang === "bn"
+                  ? translations.bn.standbyTitle
+                  : lang === "en"
+                  ? translations.en.standbyTitle
+                  : `${translations.bn.standbyTitle} • ${translations.en.standbyTitle}`}
+              </h2>
+              <p className={`text-sm sm:text-base ${themeConfig.subtitleTextClass}`}>
+                {lang === "bn"
+                  ? translations.bn.standbySubtitle
+                  : lang === "en"
+                  ? translations.en.standbySubtitle
+                  : `${translations.bn.standbySubtitle}`}
               </p>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {streamComments.map((comment) => (
-                <LiveCommentCard key={comment.id} comment={comment} isStageView={true} />
-              ))}
+          </div>
+        ) : (
+          /* Active Published Stage Layout: QR Code + Live Comments Side-by-Side */
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 flex-1 items-start mt-2">
+            {/* QR CODE COLUMN */}
+            <div
+              className={`lg:col-span-5 xl:col-span-4 lg:sticky lg:top-6 space-y-4 ${
+                settings.qr_position === "right" ? "lg:order-2" : "lg:order-1"
+              }`}
+            >
+              {settings.allow_comments ? (
+                <QRCodeCard
+                  customUrl={settings.qr_url}
+                  fgColor={settings.qr_fg_color}
+                  bgColor={settings.qr_bg_color}
+                  frameStyle={settings.qr_frame_style}
+                  size={settings.qr_size}
+                  labelEn={settings.qr_label_en}
+                  labelBn={settings.qr_label_bn}
+                  logoEmoji={settings.qr_logo_emoji}
+                  language={lang}
+                  isLightTheme={themeConfig.isLight}
+                />
+              ) : (
+                <div
+                  className={`rounded-3xl p-8 text-center space-y-3 ${themeConfig.headerCardClass}`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-600 flex items-center justify-center mx-auto">
+                    <Lock className="w-7 h-7" />
+                  </div>
+                  <h3 className={`text-lg sm:text-xl font-bold ${themeConfig.titleTextClass}`}>
+                    {lang === "bn"
+                      ? translations.bn.closedTitle
+                      : lang === "en"
+                      ? translations.en.closedTitle
+                      : `${translations.bn.closedTitle}`}
+                  </h3>
+                  <p className={`text-xs sm:text-sm ${themeConfig.subtitleTextClass}`}>
+                    {lang === "bn"
+                      ? translations.bn.closedSubtitle
+                      : translations.en.closedSubtitle}
+                  </p>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </div>
 
-      {/* Footer */}
-      <footer className="mt-12 pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500 text-center">
-        <span>Live Interactive Comment System • Powered by Supabase Realtime</span>
-        <div className="flex items-center gap-4">
-          <a href="/audience" className="hover:text-slate-300 transition-colors">Audience View</a>
-          <span>•</span>
-          <a href="/admin" className="hover:text-slate-300 transition-colors">Admin Panel</a>
-        </div>
-      </footer>
-    </main>
+            {/* LIVE COMMENTS STREAM COLUMN */}
+            <div
+              className={`lg:col-span-7 xl:col-span-8 flex flex-col space-y-4 ${
+                settings.qr_position === "right" ? "lg:order-1" : "lg:order-2"
+              }`}
+            >
+              {/* Pinned Spotlight Comment */}
+              {pinnedComment && (
+                <PinnedSpotlight
+                  pinnedComment={pinnedComment}
+                  themeConfig={themeConfig}
+                  language={lang}
+                />
+              )}
+
+              {/* Comments Feed */}
+              {loading ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map((n) => (
+                    <div
+                      key={n}
+                      className={`rounded-2xl p-6 h-28 animate-pulse ${themeConfig.commentCardClass}`}
+                    />
+                  ))}
+                </div>
+              ) : streamComments.length === 0 && !pinnedComment ? (
+                <div
+                  className={`rounded-3xl p-10 text-center flex flex-col items-center justify-center space-y-3 my-4 ${themeConfig.commentCardClass}`}
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-emerald-700/10 border border-emerald-700/20 flex items-center justify-center text-2xl">
+                    <MessageSquare
+                      className={`w-7 h-7 ${
+                        themeConfig.isLight ? "text-emerald-800" : "text-indigo-400"
+                      }`}
+                    />
+                  </div>
+                  <h3 className={`text-xl font-extrabold ${themeConfig.titleTextClass}`}>
+                    {lang === "bn"
+                      ? translations.bn.emptyTitle
+                      : lang === "en"
+                      ? translations.en.emptyTitle
+                      : `${translations.bn.emptyTitle} • ${translations.en.emptyTitle}`}
+                  </h3>
+                  <p className={`text-sm max-w-md ${themeConfig.subtitleTextClass}`}>
+                    {lang === "bn"
+                      ? translations.bn.emptySubtitle
+                      : lang === "en"
+                      ? translations.en.emptySubtitle
+                      : `${translations.bn.emptySubtitle}`}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3.5 max-h-[68vh] overflow-y-auto pr-1.5">
+                  {streamComments.map((comment) => (
+                    <LiveCommentCard
+                      key={comment.id}
+                      comment={comment}
+                      isStageView={true}
+                      themeConfig={themeConfig}
+                      language={lang}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

@@ -3,26 +3,26 @@
 import { supabaseAdmin } from "@/lib/supabase/admin";
 import { LiveComment, LiveSystemSettings } from "@/types/database";
 
-const ADMIN_PASSWORD_FALLBACK = process.env.ADMIN_SECRET_PASSWORD || "admin123";
+const ADMIN_PASSWORD_FALLBACK = process.env.ADMIN_SECRET_PASSWORD || "31stbn@admin2026";
 
 /**
- * Validates the admin password against database settings or fallback env var.
+ * Validates the admin password against private live_admin_secrets table.
  */
 export async function verifyAdminPassword(password: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: settings } = await supabaseAdmin
-      .from("live_system_settings")
+    const { data: secretRow } = await supabaseAdmin
+      .from("live_admin_secrets")
       .select("admin_password")
       .eq("id", "current")
       .single();
 
-    const expectedPassword = settings?.admin_password || ADMIN_PASSWORD_FALLBACK;
+    const expectedPassword = secretRow?.admin_password || ADMIN_PASSWORD_FALLBACK;
     if (password === expectedPassword) {
       return { success: true };
     }
-    return { success: false, error: "Incorrect admin password." };
+    return { success: false, error: "Invalid credentials." };
   } catch (err: any) {
-    return { success: false, error: err.message || "Authentication error." };
+    return { success: false, error: "Authentication error." };
   }
 }
 
@@ -80,14 +80,12 @@ export async function adminTogglePinComment(
   const auth = await verifyAdminPassword(password);
   if (!auth.success) return { success: false, error: auth.error };
 
-  // If pinning this comment, we can either unpin all others or allow multiple.
-  // Setting pinned_at timestamp helps with ordering.
   const { error } = await supabaseAdmin
     .from("live_comments")
     .update({
       is_pinned: isPinned,
       pinned_at: isPinned ? new Date().toISOString() : null,
-      status: "approved", // Automatically ensure pinned comment is approved
+      status: "approved",
     })
     .eq("id", commentId);
 
@@ -126,7 +124,7 @@ export async function adminClearAllComments(
   const { error } = await supabaseAdmin
     .from("live_comments")
     .delete()
-    .neq("id", "00000000-0000-0000-0000-000000000000"); // Delete all
+    .neq("id", "00000000-0000-0000-0000-000000000000");
 
   if (error) return { success: false, error: error.message };
   return { success: true };
@@ -151,29 +149,67 @@ export async function adminGetSettings(): Promise<{
 }
 
 /**
- * Admin: Update live system settings.
+ * Admin: Quick toggle comment section ON / OFF.
  */
-export async function adminUpdateSettings(
+export async function adminToggleCommentSection(
   password: string,
-  updates: Partial<LiveSystemSettings>
+  allowComments: boolean
 ): Promise<{ success: boolean; error?: string }> {
   const auth = await verifyAdminPassword(password);
   if (!auth.success) return { success: false, error: auth.error };
 
-  const payload: any = {
+  const { error } = await supabaseAdmin
+    .from("live_system_settings")
+    .update({
+      allow_comments: allowComments,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", "current");
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * Admin: Update & Publish live system settings for the Big Screen.
+ */
+export async function adminUpdateSettings(
+  password: string,
+  updates: Partial<LiveSystemSettings> & { new_admin_password?: string }
+): Promise<{ success: boolean; error?: string }> {
+  const auth = await verifyAdminPassword(password);
+  if (!auth.success) return { success: false, error: auth.error };
+
+  const payload: Record<string, any> = {
     updated_at: new Date().toISOString(),
   };
 
-  if (updates.event_title !== undefined) payload.event_title = updates.event_title;
-  if (updates.event_subtitle !== undefined) payload.event_subtitle = updates.event_subtitle;
-  if (updates.qr_url !== undefined) payload.qr_url = updates.qr_url;
-  if (updates.auto_approve !== undefined) payload.auto_approve = updates.auto_approve;
-  if (updates.allow_comments !== undefined) payload.allow_comments = updates.allow_comments;
-  if (updates.announcement_banner !== undefined) payload.announcement_banner = updates.announcement_banner;
-  if (updates.theme !== undefined) payload.theme = updates.theme;
-  if (updates.banned_words !== undefined) payload.banned_words = updates.banned_words;
-  if (updates.admin_password !== undefined && updates.admin_password.trim()) {
-    payload.admin_password = updates.admin_password.trim();
+  const allowedKeys: (keyof LiveSystemSettings)[] = [
+    "event_title",
+    "event_subtitle",
+    "qr_url",
+    "auto_approve",
+    "allow_comments",
+    "announcement_banner",
+    "theme",
+    "banned_words",
+    "language",
+    "is_published",
+    "qr_fg_color",
+    "qr_bg_color",
+    "qr_frame_style",
+    "qr_size",
+    "qr_position",
+    "qr_label_en",
+    "qr_label_bn",
+    "qr_logo_emoji",
+    "custom_bg_url",
+  ];
+
+  for (const key of allowedKeys) {
+    if (updates[key] !== undefined) {
+      payload[key] = updates[key];
+    }
   }
 
   const { error } = await supabaseAdmin
@@ -182,5 +218,19 @@ export async function adminUpdateSettings(
     .eq("id", "current");
 
   if (error) return { success: false, error: error.message };
+
+  // If password change requested, update private live_admin_secrets table
+  if (updates.new_admin_password && updates.new_admin_password.trim()) {
+    const { error: passErr } = await supabaseAdmin
+      .from("live_admin_secrets")
+      .update({
+        admin_password: updates.new_admin_password.trim(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", "current");
+
+    if (passErr) return { success: false, error: passErr.message };
+  }
+
   return { success: true };
 }

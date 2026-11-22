@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/lib/supabase/admin";
 export interface SubmitCommentResult {
   success: boolean;
   message: string;
+  messageBn: string;
   commentId?: string;
   status?: "approved" | "pending";
 }
@@ -19,16 +20,32 @@ export async function submitAudienceComment(formData: {
   const author_avatar = formData.author_avatar || "💬";
 
   if (!author_name) {
-    return { success: false, message: "Please provide your name." };
+    return {
+      success: false,
+      message: "Please provide your name.",
+      messageBn: "অনুগ্রহ করে আপনার নাম লিখুন।",
+    };
   }
   if (!content) {
-    return { success: false, message: "Please enter a comment." };
+    return {
+      success: false,
+      message: "Please enter a comment.",
+      messageBn: "অনুগ্রহ করে আপনার মন্তব্য লিখুন।",
+    };
   }
   if (author_name.length > 50) {
-    return { success: false, message: "Name must be 50 characters or less." };
+    return {
+      success: false,
+      message: "Name must be 50 characters or less.",
+      messageBn: "নাম ৫০ অক্ষরের মধ্যে হতে হবে।",
+    };
   }
   if (content.length > 500) {
-    return { success: false, message: "Comment must be 500 characters or less." };
+    return {
+      success: false,
+      message: "Comment must be 500 characters or less.",
+      messageBn: "মন্তব্য ৫০০ অক্ষরের মধ্যে হতে হবে।",
+    };
   }
 
   // Fetch current live settings
@@ -45,7 +62,8 @@ export async function submitAudienceComment(formData: {
   if (settings && !settings.allow_comments) {
     return {
       success: false,
-      message: "Comment submissions are currently paused by the organizer.",
+      message: "Comment submissions are currently turned OFF by the organizer.",
+      messageBn: "আয়োজক বর্তমানে মন্তব্য গ্রহণ বন্ধ রেখেছেন।",
     };
   }
 
@@ -77,15 +95,23 @@ export async function submitAudienceComment(formData: {
 
   if (insertError) {
     console.error("Failed to insert comment:", insertError);
-    return { success: false, message: "Failed to post comment. Please try again." };
+    return {
+      success: false,
+      message: "Failed to post comment. Please try again.",
+      messageBn: "মন্তব্য পাঠানো যায়নি। আবার চেষ্টা করুন।",
+    };
   }
 
   return {
     success: true,
     message:
       initialStatus === "approved"
-        ? "Your comment is live on the big screen! 🎉"
-        : "Your comment was submitted and is waiting for moderator approval! ⏳",
+        ? "Your comment is now live on the big screen! 🎉"
+        : "Your comment was submitted and is awaiting approval! ⏳",
+    messageBn:
+      initialStatus === "approved"
+        ? "আপনার মন্তব্যটি এখন বড় পর্দায় সরাসরি দেখা যাচ্ছে! 🎉"
+        : "আপনার মন্তব্যটি জমা হয়েছে এবং অনুমোদনের অপেক্ষায় আছে! ⏳",
     commentId: newComment.id,
     status: initialStatus as "approved" | "pending",
   };

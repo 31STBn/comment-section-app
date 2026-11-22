@@ -2,16 +2,40 @@
 
 import React, { useState, useEffect } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Smartphone, ExternalLink, Copy, Check, Sparkles, QrCode } from "lucide-react";
+import { Smartphone, QrCode } from "lucide-react";
+import { AppLanguage, QRFrameStyle, QRSizeOption } from "@/types/database";
+import { translations } from "@/lib/i18n";
 
 interface QRCodeCardProps {
   customUrl?: string;
+  fgColor?: string;
+  bgColor?: string;
+  frameStyle?: QRFrameStyle | string;
+  size?: QRSizeOption | string;
+  labelEn?: string;
+  labelBn?: string;
+  logoEmoji?: string;
+  language?: AppLanguage;
+  isLightTheme?: boolean;
+  isPreview?: boolean;
   className?: string;
 }
 
-export default function QRCodeCard({ customUrl, className = "" }: QRCodeCardProps) {
+export default function QRCodeCard({
+  customUrl,
+  fgColor = "#14532d",
+  bgColor = "#ffffff",
+  frameStyle = "military-badge",
+  size = "large",
+  labelEn = "Scan QR to Comment",
+  labelBn = "মন্তব্য করতে QR কোডটি স্ক্যান করুন",
+  logoEmoji = "",
+  language = "both",
+  isLightTheme = true,
+  isPreview = false,
+  className = "",
+}: QRCodeCardProps) {
   const [audienceUrl, setAudienceUrl] = useState<string>("");
-  const [copied, setCopied] = useState<boolean>(false);
 
   useEffect(() => {
     if (customUrl && customUrl.trim()) {
@@ -21,98 +45,196 @@ export default function QRCodeCard({ customUrl, className = "" }: QRCodeCardProp
     }
   }, [customUrl]);
 
-  const handleCopy = async () => {
-    if (!audienceUrl) return;
-    try {
-      await navigator.clipboard.writeText(audienceUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2500);
-    } catch (err) {
-      console.error("Failed to copy URL:", err);
+  const pixelSize = isPreview
+    ? 140
+    : size === "xlarge"
+    ? 300
+    : size === "normal"
+    ? 200
+    : 250;
+
+  // Frame styling
+  const getFrameOuterClasses = () => {
+    switch (frameStyle) {
+      case "military-badge":
+        return "bg-white/95 backdrop-blur-md border-[3px] border-emerald-800 shadow-2xl shadow-emerald-950/15 ring-4 ring-amber-400/50 text-emerald-950";
+      case "royal-gold":
+        return "bg-gradient-to-b from-[#0c1a36]/95 to-[#071126]/95 backdrop-blur-xl border-2 border-amber-400 shadow-2xl shadow-amber-500/20 ring-2 ring-amber-300/30 text-white";
+      case "minimal-clean":
+        return "bg-white border border-slate-200 shadow-xl text-slate-900";
+      case "neon-pulse":
+        return "bg-slate-900/90 backdrop-blur-xl border-2 border-indigo-500 shadow-[0_0_35px_rgba(99,102,241,0.35)] text-white";
+      case "modern-glass":
+      default:
+        return isLightTheme
+          ? "bg-white/85 backdrop-blur-xl border border-emerald-900/20 shadow-xl text-slate-900"
+          : "bg-slate-900/80 backdrop-blur-xl border border-white/15 shadow-2xl text-white";
     }
   };
 
+  const getQRContainerClasses = () => {
+    switch (frameStyle) {
+      case "military-badge":
+        return "p-4 sm:p-5 rounded-2xl border-2 border-emerald-800/30 shadow-inner";
+      case "royal-gold":
+        return "p-4 sm:p-5 rounded-2xl border-2 border-amber-400 shadow-lg";
+      case "neon-pulse":
+        return "p-4 sm:p-5 rounded-2xl border-2 border-indigo-400/60 qr-glow";
+      case "minimal-clean":
+        return "p-3 sm:p-4 rounded-xl border border-slate-100";
+      default:
+        return "p-4 sm:p-5 rounded-2xl shadow-lg border border-black/5";
+    }
+  };
+
+  const isDarkCard =
+    frameStyle === "royal-gold" ||
+    frameStyle === "neon-pulse" ||
+    (frameStyle === "modern-glass" && !isLightTheme);
+
   return (
     <div
-      className={`glass-panel-glow rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-between text-center relative overflow-hidden transition-all duration-300 hover:scale-[1.01] ${className}`}
+      className={`rounded-3xl ${
+        isPreview ? "p-4" : "p-6 sm:p-7"
+      } flex flex-col items-center justify-center text-center relative overflow-hidden transition-all duration-300 ${getFrameOuterClasses()} ${className}`}
     >
-      {/* Background ambient lighting */}
-      <div className="absolute -top-24 -left-24 w-60 h-60 bg-purple-600/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-60 h-60 bg-blue-600/20 rounded-full blur-3xl pointer-events-none" />
+      {/* Decorative Tactical Corner Accents for Military / Royal styles */}
+      {(frameStyle === "military-badge" || frameStyle === "royal-gold") && (
+        <>
+          <div
+            className={`absolute top-2.5 left-2.5 w-4 h-4 border-t-2 border-l-2 rounded-tl ${
+              frameStyle === "military-badge" ? "border-emerald-800" : "border-amber-400"
+            }`}
+          />
+          <div
+            className={`absolute top-2.5 right-2.5 w-4 h-4 border-t-2 border-r-2 rounded-tr ${
+              frameStyle === "military-badge" ? "border-emerald-800" : "border-amber-400"
+            }`}
+          />
+          <div
+            className={`absolute bottom-2.5 left-2.5 w-4 h-4 border-b-2 border-l-2 rounded-bl ${
+              frameStyle === "military-badge" ? "border-emerald-800" : "border-amber-400"
+            }`}
+          />
+          <div
+            className={`absolute bottom-2.5 right-2.5 w-4 h-4 border-b-2 border-r-2 rounded-br ${
+              frameStyle === "military-badge" ? "border-emerald-800" : "border-amber-400"
+            }`}
+          />
+        </>
+      )}
 
-      {/* Top Header Badge */}
-      <div className="w-full flex items-center justify-between gap-2 mb-4">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-purple-500/10 text-purple-300 border border-purple-500/30">
-          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
-          Scan To Post
-        </span>
-        <span className="flex items-center gap-1.5 text-xs text-emerald-400 font-medium">
-          <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-          </span>
-          Live Feed Active
-        </span>
+      {/* Top Call to Action Header */}
+      <div className="mb-3 space-y-1">
+        {(language === "bn" || language === "both") && (
+          <div
+            className={`font-extrabold tracking-tight leading-snug ${
+              isPreview ? "text-sm" : "text-lg sm:text-xl"
+            } ${
+              frameStyle === "military-badge"
+                ? "text-emerald-900"
+                : frameStyle === "royal-gold"
+                ? "text-amber-300"
+                : isDarkCard
+                ? "text-white"
+                : "text-slate-900"
+            }`}
+          >
+            {labelBn || "মন্তব্য করতে QR কোডটি স্ক্যান করুন"}
+          </div>
+        )}
+        {(language === "en" || language === "both") && (
+          <div
+            className={`font-bold tracking-tight ${
+              language === "both"
+                ? isPreview
+                  ? "text-xs opacity-80"
+                  : "text-sm sm:text-base opacity-85"
+                : isPreview
+                ? "text-sm"
+                : "text-lg sm:text-xl"
+            } ${
+              frameStyle === "military-badge"
+                ? "text-emerald-800"
+                : frameStyle === "royal-gold"
+                ? "text-amber-200"
+                : isDarkCard
+                ? "text-slate-200"
+                : "text-slate-700"
+            }`}
+          >
+            {labelEn || "Scan QR to Comment"}
+          </div>
+        )}
       </div>
 
-      {/* Main QR Code container with high contrast */}
-      <div className="relative group my-2">
-        <div className="p-4 sm:p-6 bg-white rounded-2xl shadow-2xl transition-transform duration-300 group-hover:scale-105 border-4 border-indigo-500/30 qr-glow">
+      {/* Main QR Code Container */}
+      <div className="relative my-1">
+        <div
+          className={`transition-transform duration-300 ${getQRContainerClasses()}`}
+          style={{ backgroundColor: bgColor || "#ffffff" }}
+        >
           {audienceUrl ? (
-            <QRCodeSVG
-              value={audienceUrl}
-              size={240}
-              level="H"
-              includeMargin={false}
-              className="w-48 h-48 sm:w-60 sm:h-60"
-            />
+            <div className="relative flex items-center justify-center">
+              <QRCodeSVG
+                value={audienceUrl}
+                size={pixelSize}
+                bgColor={bgColor || "#ffffff"}
+                fgColor={fgColor || "#14532d"}
+                level="H"
+                includeMargin={false}
+              />
+              {logoEmoji && logoEmoji.trim() && (
+                <div
+                  className="absolute flex items-center justify-center rounded-xl shadow-md border-2"
+                  style={{
+                    backgroundColor: bgColor || "#ffffff",
+                    borderColor: fgColor || "#14532d",
+                    width: isPreview ? 30 : 46,
+                    height: isPreview ? 30 : 46,
+                    fontSize: isPreview ? "16px" : "24px",
+                  }}
+                >
+                  {logoEmoji}
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="w-48 h-48 sm:w-60 sm:h-60 flex items-center justify-center bg-gray-100 rounded-xl">
-              <QrCode className="w-16 h-16 text-gray-400 animate-pulse" />
+            <div
+              style={{ width: pixelSize, height: pixelSize }}
+              className="flex items-center justify-center bg-gray-100 rounded-xl"
+            >
+              <QrCode className="w-14 h-14 text-gray-400 animate-pulse" />
             </div>
           )}
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="mt-4 space-y-1.5 max-w-xs">
-        <div className="flex items-center justify-center gap-2 text-white font-bold text-lg sm:text-xl">
-          <Smartphone className="w-5 h-5 text-indigo-400" />
-          <span>Point Your Camera</span>
-        </div>
-        <p className="text-xs sm:text-sm text-slate-300/80 leading-relaxed">
-          Scan with your phone to submit your name and live comment instantly!
-        </p>
-      </div>
-
-      {/* URL bar & Copy Button */}
-      <div className="w-full mt-5 pt-4 border-t border-white/10 flex items-center justify-between gap-2">
-        <div className="text-left overflow-hidden">
-          <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider">Direct Link</div>
-          <div className="text-xs text-slate-200 truncate font-mono select-all">
-            {audienceUrl || "Generating link..."}
+      {/* Bottom Camera Instruction */}
+      {!isPreview && (
+        <div className="mt-4 space-y-1 max-w-xs">
+          <div
+            className={`inline-flex items-center justify-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-bold ${
+              frameStyle === "military-badge"
+                ? "bg-emerald-900 text-amber-300"
+                : frameStyle === "royal-gold"
+                ? "bg-amber-400 text-slate-950"
+                : isDarkCard
+                ? "bg-white/10 text-white"
+                : "bg-emerald-900/10 text-emerald-950"
+            }`}
+          >
+            <Smartphone className="w-4 h-4 shrink-0" />
+            <span>
+              {language === "bn"
+                ? translations.bn.pointCamera
+                : language === "en"
+                ? translations.en.pointCamera
+                : "ফোনের ক্যামেরা দিয়ে স্ক্যান করুন • Scan with Phone"}
+            </span>
           </div>
         </div>
-
-        <div className="flex items-center gap-1.5 shrink-0">
-          <button
-            onClick={handleCopy}
-            className="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors border border-slate-700/50"
-            title="Copy URL"
-          >
-            {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
-          </button>
-          <a
-            href={audienceUrl || "#"}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 rounded-xl bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white transition-colors border border-indigo-500/40"
-            title="Open in new tab"
-          >
-            <ExternalLink className="w-4 h-4" />
-          </a>
-        </div>
-      </div>
+      )}
     </div>
   );
 }
