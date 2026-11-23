@@ -29,11 +29,10 @@ export default function PinnedSpotlight({
   return (
     <div className="relative group mb-4 overflow-hidden rounded-3xl p-[2px] bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-600 shadow-xl animate-fade-in-up">
       <div
-        className={`relative rounded-[22px] p-5 sm:p-6 ${
-          themeConfig.isLight
+        className={`relative rounded-[22px] p-5 sm:p-6 ${themeConfig.isLight
             ? "bg-white/95 backdrop-blur-xl text-emerald-950"
             : "bg-slate-950/95 backdrop-blur-2xl text-white"
-        }`}
+          }`}
       >
         {/* Header Badge */}
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -44,8 +43,8 @@ export default function PinnedSpotlight({
                 {language === "bn"
                   ? translations.bn.featuredComment
                   : language === "en"
-                  ? translations.en.featuredComment
-                  : "নির্বাচিত মন্তব্য • Featured"}
+                    ? translations.en.featuredComment
+                    : "নির্বাচিত মন্তব্য • Featured"}
               </span>
             </span>
           </div>
@@ -62,17 +61,15 @@ export default function PinnedSpotlight({
         {/* Content */}
         <div className="space-y-3">
           <p
-            className={`text-lg sm:text-xl md:text-2xl font-extrabold leading-snug break-words ${
-              themeConfig.isLight ? "text-emerald-950" : "text-white"
-            }`}
+            className={`text-lg sm:text-xl md:text-2xl font-extrabold leading-snug break-words ${themeConfig.isLight ? "text-emerald-950" : "text-white"
+              }`}
           >
             &ldquo;{pinnedComment.content}&rdquo;
           </p>
 
           <div
-            className={`flex items-center justify-between pt-2.5 border-t ${
-              themeConfig.isLight ? "border-emerald-900/10" : "border-white/10"
-            }`}
+            className={`flex items-center justify-between pt-2.5 border-t ${themeConfig.isLight ? "border-emerald-900/10" : "border-white/10"
+              }`}
           >
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-emerald-700 to-amber-600 flex items-center justify-center font-bold text-white text-sm">
@@ -81,9 +78,8 @@ export default function PinnedSpotlight({
                   : pinnedComment.author_name.charAt(0).toUpperCase()}
               </div>
               <span
-                className={`font-bold text-sm sm:text-base ${
-                  themeConfig.isLight ? "text-emerald-900" : "text-amber-300"
-                }`}
+                className={`font-bold text-sm sm:text-base ${themeConfig.isLight ? "text-emerald-900" : "text-amber-300"
+                  }`}
               >
                 {pinnedComment.author_name}
               </span>

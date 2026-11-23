@@ -114,6 +114,10 @@ export default function SecretSuperadminPage() {
   const [qrLabelEn, setQrLabelEn] = useState<string>("Scan QR to Comment");
   const [qrLabelBn, setQrLabelBn] = useState<string>("মন্তব্য করতে QR কোডটি স্ক্যান করুন");
   const [qrLogoEmoji, setQrLogoEmoji] = useState<string>("");
+  const [gformMode, setGformMode] = useState<string>("hybrid");
+  const [gformEmbedUrl, setGformEmbedUrl] = useState<string>(
+    "https://docs.google.com/forms/d/e/1FAIpQLScRqR0gp6qw9Jdjdi95dPSXLzmfdL6nCHCOhsunDE0Czgwlkg/viewform?embedded=true"
+  );
 
   // Password update state
   const [newPassword, setNewPassword] = useState<string>("");
@@ -234,6 +238,11 @@ export default function SecretSuperadminPage() {
         setQrLabelEn(s.qr_label_en || "Scan QR to Comment");
         setQrLabelBn(s.qr_label_bn || "মন্তব্য করতে QR কোডটি স্ক্যান করুন");
         setQrLogoEmoji(s.qr_logo_emoji || "");
+        setGformMode(s.gform_mode || "hybrid");
+        setGformEmbedUrl(
+          s.gform_embed_url ||
+            "https://docs.google.com/forms/d/e/1FAIpQLScRqR0gp6qw9Jdjdi95dPSXLzmfdL6nCHCOhsunDE0Czgwlkg/viewform?embedded=true"
+        );
         setHasUnsavedChanges(false);
       }
     } catch (err) {
@@ -295,6 +304,8 @@ export default function SecretSuperadminPage() {
         qr_label_en: qrLabelEn,
         qr_label_bn: qrLabelBn,
         qr_logo_emoji: qrLogoEmoji,
+        gform_mode: gformMode,
+        gform_embed_url: gformEmbedUrl,
         ...(newPassword.trim() ? { new_admin_password: newPassword.trim() } : {}),
       });
 
@@ -1877,6 +1888,73 @@ export default function SecretSuperadminPage() {
                       setHasUnsavedChanges(true);
                     }}
                     className="w-5 h-5 accent-emerald-600 rounded cursor-pointer shrink-0"
+                  />
+                </div>
+              </div>
+
+              {/* Google Form Mobile UI Mode */}
+              <div className="p-4 rounded-2xl bg-slate-900/90 border border-emerald-500/30 space-y-3">
+                <label className="text-xs font-bold text-emerald-400 block">
+                  {adminUiLang === "bn"
+                    ? "মোবাইল গুগল ফর্ম মোড (Google Form Mobile UI Mode)"
+                    : "Google Form Mobile UI Mode"}
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: "hybrid",
+                      label:
+                        adminUiLang === "bn"
+                          ? "✨ প্রিমিয়াম + গুগল ফর্ম (উভয় ট্যাব)"
+                          : "✨ Smart Form + Google Form Tabs",
+                    },
+                    {
+                      id: "iframe-only",
+                      label:
+                        adminUiLang === "bn"
+                          ? "📋 শুধু গুগল ফর্ম (Direct Embed)"
+                          : "📋 Embedded Google Form Only",
+                    },
+                    {
+                      id: "premium-only",
+                      label:
+                        adminUiLang === "bn"
+                          ? "🎖️ শুধু প্রিমিয়াম সিঙ্ক ফর্ম"
+                          : "🎖️ Premium Synced UI Only",
+                    },
+                  ].map((m) => (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => {
+                        setGformMode(m.id);
+                        setHasUnsavedChanges(true);
+                      }}
+                      className={`py-2.5 px-3 rounded-xl text-xs font-bold border transition-all ${
+                        gformMode === m.id
+                          ? "bg-emerald-600 text-white border-emerald-400 shadow"
+                          : "bg-slate-950 text-slate-300 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-1 pt-1">
+                  <label className="text-[11px] font-semibold text-slate-400">
+                    {adminUiLang === "bn"
+                      ? "গুগল ফর্ম এমবেড লিংক (Google Form Embed URL)"
+                      : "Google Form Embed URL"}
+                  </label>
+                  <input
+                    type="url"
+                    value={gformEmbedUrl}
+                    onChange={(e) => {
+                      setGformEmbedUrl(e.target.value);
+                      setHasUnsavedChanges(true);
+                    }}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-700 text-xs text-white focus:border-emerald-500 outline-none"
                   />
                 </div>
               </div>

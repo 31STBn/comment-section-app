@@ -30,6 +30,7 @@ export type QRFrameStyle =
 
 export type QRSizeOption = "normal" | "large" | "xlarge";
 export type QRPositionOption = "left" | "right";
+export type GFormMode = "hybrid" | "iframe-only" | "premium-only";
 
 export interface LiveSystemSettings {
   id: string;
@@ -52,5 +53,10 @@ export interface LiveSystemSettings {
   qr_label_bn: string;
   qr_logo_emoji: string;
   custom_bg_url: string;
+  gform_embed_url?: string;
+  gform_action_url?: string;
+  gform_entry_name?: string;
+  gform_entry_comment?: string;
+  gform_mode?: GFormMode | string;
   updated_at: string;
 }

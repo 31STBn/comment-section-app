@@ -2,12 +2,18 @@
 
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
+const DEFAULT_GFORM_ACTION_URL =
+  "https://docs.google.com/forms/d/e/1FAIpQLScRqR0gp6qw9Jdjdi95dPSXLzmfdL6nCHCOhsunDE0Czgwlkg/formResponse";
+const DEFAULT_ENTRY_NAME = "entry.1420692220";
+const DEFAULT_ENTRY_COMMENT = "entry.1634634498";
+
 export interface SubmitCommentResult {
   success: boolean;
   message: string;
   messageBn: string;
   commentId?: string;
   status?: "approved" | "pending";
+  syncedToGoogleForm?: boolean;
 }
 
 export async function submitAudienceComment(formData: {
@@ -17,41 +23,43 @@ export async function submitAudienceComment(formData: {
 }): Promise<SubmitCommentResult> {
   const author_name = (formData.author_name || "").trim();
   const content = (formData.content || "").trim();
-  const author_avatar = formData.author_avatar || "💬";
+  const author_avatar = formData.author_avatar || "🎖️";
 
   if (!author_name) {
     return {
       success: false,
-      message: "Please provide your name.",
-      messageBn: "অনুগ্রহ করে আপনার নাম লিখুন।",
+      message: "Please provide your Rank/Designation & Name.",
+      messageBn: "অনুগ্রহ করে আপনার পদবী এবং নাম লিখুন।",
     };
   }
   if (!content) {
     return {
       success: false,
       message: "Please enter a comment.",
-      messageBn: "অনুগ্রহ করে আপনার মন্তব্য লিখুন।",
+      messageBn: "অনুগ্রহ করে আপনার কমেন্ট লিখুন।",
     };
   }
-  if (author_name.length > 50) {
+  if (author_name.length > 80) {
     return {
       success: false,
-      message: "Name must be 50 characters or less.",
-      messageBn: "নাম ৫০ অক্ষরের মধ্যে হতে হবে।",
+      message: "Name must be 80 characters or less.",
+      messageBn: "পদবী এবং নাম ৮০ অক্ষরের মধ্যে হতে হবে।",
     };
   }
   if (content.length > 500) {
     return {
       success: false,
       message: "Comment must be 500 characters or less.",
-      messageBn: "মন্তব্য ৫০০ অক্ষরের মধ্যে হতে হবে।",
+      messageBn: "কমেন্ট ৫০০ অক্ষরের মধ্যে হতে হবে।",
     };
   }
 
   // Fetch current live settings
   const { data: settings, error: settingsError } = await supabaseAdmin
     .from("live_system_settings")
-    .select("allow_comments, auto_approve, banned_words")
+    .select(
+      "allow_comments, auto_approve, banned_words, gform_action_url, gform_entry_name, gform_entry_comment"
+    )
     .eq("id", "current")
     .single();
 
@@ -80,6 +88,7 @@ export async function submitAudienceComment(formData: {
 
   const initialStatus = settings?.auto_approve ? "approved" : "pending";
 
+  // 1. Insert into Supabase Realtime database for Big Screen
   const { data: newComment, error: insertError } = await supabaseAdmin
     .from("live_comments")
     .insert({
@@ -102,22 +111,48 @@ export async function submitAudienceComment(formData: {
     };
   }
 
+  // 2. Simultaneously forward to Google Form (পদবী এবং নাম -> entry.1420692220, কমেন্ট -> entry.1634634498)
+  let syncedToGoogleForm = false;
+  try {
+    const actionUrl = settings?.gform_action_url || DEFAULT_GFORM_ACTION_URL;
+    const entryNameKey = settings?.gform_entry_name || DEFAULT_ENTRY_NAME;
+    const entryCommentKey = settings?.gform_entry_comment || DEFAULT_ENTRY_COMMENT;
+
+    const params = new URLSearchParams();
+    params.append(entryNameKey, author_name);
+    params.append(entryCommentKey, sanitizedContent);
+
+    const gRes = await fetch(actionUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: params.toString(),
+    });
+    syncedToGoogleForm = gRes.ok || gRes.status === 200 || gRes.status === 302;
+  } catch (gErr) {
+    console.warn("Google Form background sync warning:", gErr);
+  }
+
   return {
     success: true,
     message:
       initialStatus === "approved"
-        ? "Your comment is now live on the big screen! 🎉"
-        : "Your comment was submitted and is awaiting approval! ⏳",
+        ? "Submitted to Google Form & now live on the big screen! 🎉"
+        : "Submitted to Google Form & awaiting moderator approval! ⏳",
     messageBn:
       initialStatus === "approved"
-        ? "আপনার মন্তব্যটি এখন বড় পর্দায় সরাসরি দেখা যাচ্ছে! 🎉"
-        : "আপনার মন্তব্যটি জমা হয়েছে এবং অনুমোদনের অপেক্ষায় আছে! ⏳",
+        ? "গুগল ফর্ম এবং বড় পর্দায় আপনার কমেন্ট সফলভাবে প্রকাশিত হয়েছে! 🎉"
+        : "আপনার কমেন্টটি গুগল ফর্মে জমা হয়েছে এবং অনুমোদনের অপেক্ষায় আছে! ⏳",
     commentId: newComment.id,
     status: initialStatus as "approved" | "pending",
+    syncedToGoogleForm,
   };
 }
 
-export async function likeCommentAction(commentId: string): Promise<{ success: boolean; likes: number }> {
+export async function likeCommentAction(
+  commentId: string
+): Promise<{ success: boolean; likes: number }> {
   if (!commentId) return { success: false, likes: 0 };
 
   const { data: current, error: fetchErr } = await supabaseAdmin

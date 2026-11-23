@@ -204,6 +204,11 @@ export async function adminUpdateSettings(
     "qr_label_bn",
     "qr_logo_emoji",
     "custom_bg_url",
+    "gform_embed_url",
+    "gform_action_url",
+    "gform_entry_name",
+    "gform_entry_comment",
+    "gform_mode",
   ];
 
   for (const key of allowedKeys) {
